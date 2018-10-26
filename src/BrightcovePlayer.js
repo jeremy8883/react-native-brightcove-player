@@ -65,6 +65,9 @@ class BrightcovePlayer extends Component {
           this.props.onExitFullscreen &&
           this.props.onExitFullscreen(event.nativeEvent)
         }
+        onError={event =>
+          this.props.onError && this.props.onError(event.nativeEvent)
+        }
         onToggleAndroidFullscreen={event => {
           const fullscreen =
             typeof event.nativeEvent.fullscreen === 'boolean'

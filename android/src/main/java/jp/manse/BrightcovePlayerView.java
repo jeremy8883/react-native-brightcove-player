@@ -148,6 +148,42 @@ public class BrightcovePlayerView extends RelativeLayout {
                 reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(BrightcovePlayerView.this.getId(), BrightcovePlayerManager.EVENT_UPDATE_BUFFER_PROGRESS, event);
             }
         });
+        eventEmitter.on(EventType.ERROR, new EventListener() {
+            @Override
+            public void processEvent(Event e) {
+                WritableMap error = mapToRnWritableMap(e.properties);
+
+                ReactContext reactContext = (ReactContext) BrightcovePlayerView.this.getContext();
+                reactContext
+                        .getJSModule(RCTEventEmitter.class)
+                        .receiveEvent(
+                                BrightcovePlayerView.this.getId(),
+                                BrightcovePlayerManager.EVENT_ERROR,
+                                error
+                        );
+            }
+        });
+    }
+
+    // Warning, I've only tested this function for strings.
+    // Also, doesn't work with recursive maps or arrays
+    private WritableMap mapToRnWritableMap(Map<String, Object> map) {
+        WritableMap writableMap = Arguments.createMap();
+        for (String key : map.keySet()) {
+            Object val = map.get(key);
+
+            if (val instanceof String) {
+                writableMap.putString(key, (String)val);
+            } else if (val instanceof Integer) {
+                writableMap.putInt(key, (Integer)val);
+            } else if (val instanceof Boolean) {
+                writableMap.putBoolean(key, (Boolean)val);
+            } else if (val instanceof Double) {
+                writableMap.putDouble(key, (Double)val);
+            }
+        }
+
+        return writableMap;
     }
 
     public void setPolicyKey(String policyKey) {
