@@ -41,15 +41,29 @@
         [_playbackService findVideoWithVideoID:_videoId parameters:nil completion:^(BCOVVideo *video, NSDictionary *jsonResponse, NSError *error) {
             if (video) {
                 [self.playbackController setVideos: @[ video ]];
+            } else {
+                [self emitError:error];
             }
         }];
     } else if (_referenceId) {
         [_playbackService findVideoWithReferenceID:_referenceId parameters:nil completion:^(BCOVVideo *video, NSDictionary *jsonResponse, NSError *error) {
             if (video) {
                 [self.playbackController setVideos: @[ video ]];
+            } else {
+                [self emitError:error];
             }
         }];
     }
+}
+
+- (void)emitError:(NSError *)error {
+    if (!self.onError) {
+        return;
+    }
+
+    NSString *code = [NSString stringWithFormat:@"%ld", (long)[error code]];
+
+    self.onError(@{@"error_code": code, @"message": [error localizedDescription]});
 }
 
 - (id<BCOVPlaybackController>)createPlaybackController {

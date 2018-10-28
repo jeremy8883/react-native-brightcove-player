@@ -119,6 +119,7 @@ BrightcovePlayer.propTypes = {
   onPlay: PropTypes.func,
   onPause: PropTypes.func,
   onEnd: PropTypes.func,
+  onError: PropTypes.func,
   onProgress: PropTypes.func,
   onChangeDuration: PropTypes.func,
   onUpdateBufferProgress: PropTypes.func,
