@@ -9,6 +9,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.RelativeLayout;
 
+import com.brightcove.player.display.ExoPlayerVideoDisplayComponent;
 import com.brightcove.player.edge.Catalog;
 import com.brightcove.player.edge.VideoListener;
 import com.brightcove.player.event.Event;
@@ -152,17 +153,20 @@ public class BrightcovePlayerView extends RelativeLayout {
             @Override
             public void processEvent(Event e) {
                 WritableMap error = mapToRnWritableMap(e.properties);
-
-                ReactContext reactContext = (ReactContext) BrightcovePlayerView.this.getContext();
-                reactContext
-                        .getJSModule(RCTEventEmitter.class)
-                        .receiveEvent(
-                                BrightcovePlayerView.this.getId(),
-                                BrightcovePlayerManager.EVENT_ERROR,
-                                error
-                        );
+                emitError(error);
             }
         });
+    }
+
+    private void emitError(WritableMap error) {
+        ReactContext reactContext = (ReactContext) BrightcovePlayerView.this.getContext();
+        reactContext
+                .getJSModule(RCTEventEmitter.class)
+                .receiveEvent(
+                        BrightcovePlayerView.this.getId(),
+                        BrightcovePlayerManager.EVENT_ERROR,
+                        error
+                );
     }
 
     // Warning, I've only tested this function for strings.
@@ -264,6 +268,14 @@ public class BrightcovePlayerView extends RelativeLayout {
                 if (BrightcovePlayerView.this.autoPlay) {
                     BrightcovePlayerView.this.playerVideoView.start();
                 }
+            }
+
+            @Override
+            public void onError(String s) {
+                WritableMap error = Arguments.createMap();
+                error.putString("error_code", "CATALOG_FETCH_ERROR");
+                error.putString("message", s);
+                emitError(error);
             }
         };
         if (this.videoId != null) {
