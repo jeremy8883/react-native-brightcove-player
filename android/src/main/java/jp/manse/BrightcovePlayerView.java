@@ -156,6 +156,26 @@ public class BrightcovePlayerView extends RelativeLayout {
                 emitError(error);
             }
         });
+        eventEmitter.on(EventType.BUFFERING_STARTED, new EventListener() {
+            @Override
+            public void processEvent(Event e) {
+                WritableMap event = Arguments.createMap();
+                ReactContext reactContext = (ReactContext) BrightcovePlayerView.this.getContext();
+                reactContext
+                        .getJSModule(RCTEventEmitter.class)
+                        .receiveEvent(BrightcovePlayerView.this.getId(), BrightcovePlayerManager.EVENT_BUFFERING_STARTED, event);
+            }
+        });
+        eventEmitter.on(EventType.BUFFERING_COMPLETED, new EventListener() {
+            @Override
+            public void processEvent(Event e) {
+                WritableMap event = Arguments.createMap();
+                ReactContext reactContext = (ReactContext) BrightcovePlayerView.this.getContext();
+                reactContext
+                        .getJSModule(RCTEventEmitter.class)
+                        .receiveEvent(BrightcovePlayerView.this.getId(), BrightcovePlayerManager.EVENT_BUFFERING_COMPLETED, event);
+            }
+        });
     }
 
     private void emitError(WritableMap error) {
