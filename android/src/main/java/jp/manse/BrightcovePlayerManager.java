@@ -27,6 +27,9 @@ public class BrightcovePlayerManager extends SimpleViewManager<BrightcovePlayerV
     public static final String EVENT_ERROR = "error";
     public static final String EVENT_BUFFERING_STARTED = "buffering_started";
     public static final String EVENT_BUFFERING_COMPLETED = "buffering_completed";
+    public static final String EVENT_AD_STARTED = "ad_started";
+    public static final String EVENT_AD_ERROR = "ad_error";
+    public static final String EVENT_AD_COMPLETED = "ad_completed";
 
     private static ThemedReactContext context;
 
@@ -121,6 +124,9 @@ public class BrightcovePlayerManager extends SimpleViewManager<BrightcovePlayerV
         map.put(EVENT_ERROR, (Object) MapBuilder.of("registrationName", "onError"));
         map.put(EVENT_BUFFERING_STARTED, (Object) MapBuilder.of("registrationName", "onBufferingStarted"));
         map.put(EVENT_BUFFERING_COMPLETED, (Object) MapBuilder.of("registrationName", "onBufferingCompleted"));
+        map.put(EVENT_AD_STARTED, (Object) MapBuilder.of("registrationName", "onAdStarted"));
+        map.put(EVENT_AD_COMPLETED, (Object) MapBuilder.of("registrationName", "onAdCompleted"));
+        map.put(EVENT_AD_ERROR, (Object) MapBuilder.of("registrationName", "onAdError"));
         return map;
     }
 }

@@ -91,6 +91,18 @@ class BrightcovePlayer extends Component {
               this.props.onExitFullscreen(event.nativeEvent);
           }
         }}
+        onAdStarted={event =>
+          this.props.onAdStarted &&
+          this.props.onAdStarted(event.nativeEvent)
+        }
+        onAdCompleted={event =>
+          this.props.onAdCompleted &&
+          this.props.onAdCompleted(event.nativeEvent)
+        }
+        onAdError={event =>
+          this.props.onAdError &&
+          this.props.onAdError(event.nativeEvent)
+        }
       />
     );
   }
@@ -134,7 +146,10 @@ BrightcovePlayer.propTypes = {
   onBufferingStarted: PropTypes.func,
   onBufferingCompleted: PropTypes.func,
   onEnterFullscreen: PropTypes.func,
-  onExitFullscreen: PropTypes.func
+  onExitFullscreen: PropTypes.func,
+  onAdStarted: PropTypes.func,
+  onAdCompleted: PropTypes.func,
+  onAdError: PropTypes.func,
 };
 
 BrightcovePlayer.defaultProps = {};

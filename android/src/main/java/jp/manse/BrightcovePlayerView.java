@@ -1,15 +1,14 @@
 package jp.manse;
 
 import android.graphics.Color;
-import android.os.Handler;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceView;
-import android.view.View;
 import android.widget.RelativeLayout;
 
-import com.brightcove.player.display.ExoPlayerVideoDisplayComponent;
+import com.brightcove.ima.GoogleIMAComponent;
+import com.brightcove.ima.GoogleIMAEventType;
 import com.brightcove.player.edge.Catalog;
 import com.brightcove.player.edge.VideoListener;
 import com.brightcove.player.event.Event;
@@ -25,7 +24,11 @@ import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
+import com.google.ads.interactivemedia.v3.api.AdDisplayContainer;
+import com.google.ads.interactivemedia.v3.api.AdsRequest;
+import com.google.ads.interactivemedia.v3.api.ImaSdkFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,6 +44,9 @@ public class BrightcovePlayerView extends RelativeLayout {
     private boolean autoPlay = true;
     private boolean playing = false;
     private boolean fullscreen = false;
+
+    private GoogleIMAComponent googleIMAComponent;
+    private String adRulesURL = "http://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=%2F15018773%2Feverything2&ciu_szs=300x250%2C468x60%2C728x90&impl=s&gdfp_req=1&env=vp&output=xml_vast2&unviewed_position_start=1&url=dummy&correlator=[timestamp]&cmsid=133&vid=10XWSh7W4so&ad_rule=1";
 
     public BrightcovePlayerView(ThemedReactContext context) {
         this(context, null);
@@ -153,7 +159,7 @@ public class BrightcovePlayerView extends RelativeLayout {
             @Override
             public void processEvent(Event e) {
                 WritableMap error = mapToRnWritableMap(e.properties);
-                emitError(error);
+                emitEvent(BrightcovePlayerManager.EVENT_ERROR, error);
             }
         });
         eventEmitter.on(EventType.BUFFERING_STARTED, new EventListener() {
@@ -176,17 +182,78 @@ public class BrightcovePlayerView extends RelativeLayout {
                         .receiveEvent(BrightcovePlayerView.this.getId(), BrightcovePlayerManager.EVENT_BUFFERING_COMPLETED, event);
             }
         });
+
+        setupGoogleIMA(eventEmitter);
     }
 
-    private void emitError(WritableMap error) {
+    private void setupGoogleIMA(final EventEmitter eventEmitter) {
+        // Establish the Google IMA SDK factory instance.
+        final ImaSdkFactory sdkFactory = ImaSdkFactory.getInstance();
+
+        // Enable logging up ad start.
+        eventEmitter.on(EventType.AD_STARTED, new EventListener() {
+            @Override
+            public void processEvent(Event e) {
+                emitEvent(BrightcovePlayerManager.EVENT_AD_STARTED, null);
+            }
+        });
+
+        // Enable logging any failed attempts to play an ad.
+        eventEmitter.on(GoogleIMAEventType.DID_FAIL_TO_PLAY_AD, new EventListener() {
+            @Override
+            public void processEvent(Event event) {
+                emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, null);
+            }
+        });
+
+        // Enable Logging upon ad completion.
+        eventEmitter.on(EventType.AD_COMPLETED, new EventListener() {
+            @Override
+            public void processEvent(Event event) {
+                WritableMap error = mapToRnWritableMap(event.properties);
+                emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, error);
+            }
+        });
+
+        // Set up a listener for initializing AdsRequests. The Google
+        // IMA plugin emits an ad request event as a result of
+        // initializeAdsRequests() being called.
+        eventEmitter.on(GoogleIMAEventType.ADS_REQUEST_FOR_VIDEO, new EventListener() {
+            @Override
+            public void processEvent(Event event) {
+                // Create a container object for the ads to be presented.
+                AdDisplayContainer container = sdkFactory.createAdDisplayContainer();
+                container.setPlayer(googleIMAComponent.getVideoAdPlayer());
+                container.setAdContainer(playerVideoView);
+
+                // Build an ads request object and point it to the ad
+                // display container created above.
+                AdsRequest adsRequest = sdkFactory.createAdsRequest();
+                adsRequest.setAdTagUrl(adRulesURL);
+                adsRequest.setAdDisplayContainer(container);
+
+                ArrayList<AdsRequest> adsRequests = new ArrayList<AdsRequest>(1);
+                adsRequests.add(adsRequest);
+
+                // Respond to the event with the new ad requests.
+                event.properties.put(GoogleIMAComponent.ADS_REQUESTS, adsRequests);
+                eventEmitter.respond(event);
+            }
+        });
+
+        // Create the Brightcove IMA Plugin and pass in the event
+        // emitter so that the plugin can integrate with the SDK.
+        googleIMAComponent = new GoogleIMAComponent(playerVideoView, eventEmitter, true);
+    }
+
+    private void emitEvent(String type, WritableMap data) {
+        if (data == null) {
+            data = Arguments.createMap();
+        }
         ReactContext reactContext = (ReactContext) BrightcovePlayerView.this.getContext();
         reactContext
                 .getJSModule(RCTEventEmitter.class)
-                .receiveEvent(
-                        BrightcovePlayerView.this.getId(),
-                        BrightcovePlayerManager.EVENT_ERROR,
-                        error
-                );
+                .receiveEvent(BrightcovePlayerView.this.getId(), type, data);
     }
 
     // Warning, I've only tested this function for strings.
@@ -295,7 +362,7 @@ public class BrightcovePlayerView extends RelativeLayout {
                 WritableMap error = Arguments.createMap();
                 error.putString("error_code", "CATALOG_FETCH_ERROR");
                 error.putString("message", s);
-                emitError(error);
+                emitEvent(BrightcovePlayerManager.EVENT_ERROR, error);
             }
         };
         if (this.videoId != null) {
