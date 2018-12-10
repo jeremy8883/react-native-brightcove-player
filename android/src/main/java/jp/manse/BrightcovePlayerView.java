@@ -33,6 +33,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class BrightcovePlayerView extends RelativeLayout {
+    private boolean playerVideoViewWasAdded = false;
+
     private ThemedReactContext context;
     private BrightcoveExoPlayerVideoView playerVideoView;
     private BrightcoveMediaController mediaController;
@@ -46,7 +48,7 @@ public class BrightcovePlayerView extends RelativeLayout {
     private boolean fullscreen = false;
 
     private GoogleIMAComponent googleIMAComponent;
-    private String adRulesURL = "http://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=%2F15018773%2Feverything2&ciu_szs=300x250%2C468x60%2C728x90&impl=s&gdfp_req=1&env=vp&output=xml_vast2&unviewed_position_start=1&url=dummy&correlator=[timestamp]&cmsid=133&vid=10XWSh7W4so&ad_rule=1";
+    private String adRulesURL = "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ct%3Dskippablelinear&correlator=";
 
     public BrightcovePlayerView(ThemedReactContext context) {
         this(context, null);
@@ -58,7 +60,6 @@ public class BrightcovePlayerView extends RelativeLayout {
         this.setBackgroundColor(Color.BLACK);
 
         this.playerVideoView = new BrightcoveExoPlayerVideoView(this.context);
-        this.addView(this.playerVideoView);
         this.playerVideoView.setLayoutParams(new RelativeLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         this.playerVideoView.finishInitialization();
         this.mediaController = new BrightcoveMediaController(this.playerVideoView);
@@ -184,6 +185,34 @@ public class BrightcovePlayerView extends RelativeLayout {
         });
 
         setupGoogleIMA(eventEmitter);
+
+        // Because nothing is easy, we don't add the `playerVideoView` yet.
+        // We wait until after the layout request (see `requestLayout` below).
+    }
+
+
+    @Override
+    public void requestLayout() {
+        super.requestLayout();
+        post(new Runnable() {
+            @Override
+            public void run() {
+                // Advertisements wouldn't run unless we waited for a layout before intializing it.
+                // This issue only seemed to happen when run inside a react native component.
+                if (!playerVideoViewWasAdded) {
+                    addView(playerVideoView);
+                    playerVideoViewWasAdded = true;
+                }
+
+                // This was needed to allow for `addView` to work asynchronously in react native.
+                // Taken from the second solution in this comment:
+                //   https://github.com/facebook/react-native/issues/11829#issuecomment-290300921
+                measure(
+                        MeasureSpec.makeMeasureSpec(getWidth(), MeasureSpec.EXACTLY),
+                        MeasureSpec.makeMeasureSpec(getHeight(), MeasureSpec.EXACTLY));
+                layout(getLeft(), getTop(), getRight(), getBottom());
+            }
+        });
     }
 
     private void setupGoogleIMA(final EventEmitter eventEmitter) {
@@ -340,12 +369,12 @@ public class BrightcovePlayerView extends RelativeLayout {
     }
 
     private void setupCatalog() {
-        if (this.catalog != null || this.policyKey == null || this.accountId == null) return;
+        if (this.catalog != null || this.policyKey == null || this.accountId == null || !playerVideoViewWasAdded) return;
         this.catalog = new Catalog(this.playerVideoView.getEventEmitter(), this.accountId, this.policyKey);
     }
 
     private void loadMovie() {
-        if (this.catalog == null) return;
+        if (this.catalog == null || !playerVideoViewWasAdded) return;
         VideoListener listener = new VideoListener() {
 
             @Override
