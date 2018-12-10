@@ -48,7 +48,8 @@ public class BrightcovePlayerView extends RelativeLayout {
     private boolean fullscreen = false;
 
     private GoogleIMAComponent googleIMAComponent;
-    private String adRulesURL = "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ct%3Dskippablelinear&correlator=";
+    private String adRulesUrl = null;
+    private EventEmitter eventEmitter = null;
 
     public BrightcovePlayerView(ThemedReactContext context) {
         this(context, null);
@@ -67,7 +68,7 @@ public class BrightcovePlayerView extends RelativeLayout {
         this.requestLayout();
         ViewCompat.setTranslationZ(this, 9999);
 
-        EventEmitter eventEmitter = this.playerVideoView.getEventEmitter();
+        eventEmitter = this.playerVideoView.getEventEmitter();
         eventEmitter.on(EventType.VIDEO_SIZE_KNOWN, new EventListener() {
             @Override
             public void processEvent(Event e) {
@@ -184,8 +185,6 @@ public class BrightcovePlayerView extends RelativeLayout {
             }
         });
 
-        setupGoogleIMA(eventEmitter);
-
         // Because nothing is easy, we don't add the `playerVideoView` yet.
         // We wait until after the layout request (see `requestLayout` below).
     }
@@ -202,6 +201,9 @@ public class BrightcovePlayerView extends RelativeLayout {
                 if (!playerVideoViewWasAdded) {
                     addView(playerVideoView);
                     playerVideoViewWasAdded = true;
+
+                    completeInitialization();
+                    loadMovie();
                 }
 
                 // This was needed to allow for `addView` to work asynchronously in react native.
@@ -215,7 +217,10 @@ public class BrightcovePlayerView extends RelativeLayout {
         });
     }
 
-    private void setupGoogleIMA(final EventEmitter eventEmitter) {
+    private void setupGoogleIMA() {
+        // This was required since we are using `null` to say that we don't have the value yet.
+        if ("NONE".equals(adRulesUrl)) return;
+
         // Establish the Google IMA SDK factory instance.
         final ImaSdkFactory sdkFactory = ImaSdkFactory.getInstance();
 
@@ -258,7 +263,7 @@ public class BrightcovePlayerView extends RelativeLayout {
                 // Build an ads request object and point it to the ad
                 // display container created above.
                 AdsRequest adsRequest = sdkFactory.createAdsRequest();
-                adsRequest.setAdTagUrl(adRulesURL);
+                adsRequest.setAdTagUrl(adRulesUrl);
                 adsRequest.setAdDisplayContainer(container);
 
                 ArrayList<AdsRequest> adsRequests = new ArrayList<AdsRequest>(1);
@@ -308,27 +313,33 @@ public class BrightcovePlayerView extends RelativeLayout {
 
     public void setPolicyKey(String policyKey) {
         this.policyKey = policyKey;
-        this.setupCatalog();
+        this.completeInitialization();
         this.loadMovie();
     }
 
     public void setAccountId(String accountId) {
         this.accountId = accountId;
-        this.setupCatalog();
+        this.completeInitialization();
         this.loadMovie();
     }
 
     public void setVideoId(String videoId) {
         this.videoId = videoId;
         this.referenceId = null;
-        this.setupCatalog();
+        this.completeInitialization();
         this.loadMovie();
     }
 
     public void setReferenceId(String referenceId) {
         this.referenceId = referenceId;
         this.videoId = null;
-        this.setupCatalog();
+        this.completeInitialization();
+        this.loadMovie();
+    }
+
+    public void setAdRulesUrl(String adRulesUrl) {
+        this.adRulesUrl = adRulesUrl;
+        this.completeInitialization();
         this.loadMovie();
     }
 
@@ -368,8 +379,14 @@ public class BrightcovePlayerView extends RelativeLayout {
         this.playerVideoView.seekTo(time);
     }
 
-    private void setupCatalog() {
-        if (this.catalog != null || this.policyKey == null || this.accountId == null || !playerVideoViewWasAdded) return;
+    // Once we have all the properties that we need, set up the google ads (if we're using them),
+    // then set up the catalog.
+    private void completeInitialization() {
+        if (this.catalog != null || this.policyKey == null || this.accountId == null ||
+                this.adRulesUrl == null || !playerVideoViewWasAdded) return;
+
+        setupGoogleIMA();
+
         this.catalog = new Catalog(this.playerVideoView.getEventEmitter(), this.accountId, this.policyKey);
     }
 

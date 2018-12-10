@@ -36,6 +36,7 @@ class BrightcovePlayer extends Component {
             height: '100%'
           }
         ]}
+        adRulesUrl={this.props.adRulesUrl || 'NONE'}
         onReady={event =>
           this.props.onReady && this.props.onReady(event.nativeEvent)
         }
@@ -131,6 +132,7 @@ BrightcovePlayer.propTypes = {
   referenceId: PropTypes.string,
   videoId: PropTypes.string,
   autoPlay: PropTypes.bool,
+  adRulesUrl: PropTypes.string,
   play: PropTypes.bool,
   fullscreen: PropTypes.bool,
   disableDefaultControl: PropTypes.bool,

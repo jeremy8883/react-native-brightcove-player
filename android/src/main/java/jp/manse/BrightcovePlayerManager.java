@@ -90,6 +90,11 @@ public class BrightcovePlayerManager extends SimpleViewManager<BrightcovePlayerV
         view.setFullscreen(fullscreen);
     }
 
+    @ReactProp(name = "adRulesUrl")
+    public void setAdRulesUrl(BrightcovePlayerView view, String adRulesUrl) {
+        view.setAdRulesUrl(adRulesUrl);
+    }
+
     @Override
     public Map<String, Integer> getCommandsMap() {
         return MapBuilder.of(
