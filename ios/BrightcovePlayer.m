@@ -6,6 +6,10 @@
 
 @implementation BrightcovePlayer
 
+static NSString * const kViewControllerIMAVMAPResponseAdTag = @"http://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=%2F15018773%2Feverything2&ciu_szs=300x250%2C468x60%2C728x90&impl=s&gdfp_req=1&env=vp&output=xml_vast2&unviewed_position_start=1&url=dummy&correlator=[timestamp]&cmsid=133&vid=10XWSh7W4so&ad_rule=1";
+static NSString * const kViewControllerIMAPublisherID = @"insertyourpidhere";
+static NSString * const kViewControllerIMALanguage = @"en";
+
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
         [self setup];
@@ -14,18 +18,41 @@
 }
 
 - (void)setup {
-    _playbackController = [BCOVPlayerSDKManager.sharedManager createPlaybackController];
-    _playbackController.delegate = self;
-    _playbackController.autoPlay = YES;
-    _playbackController.autoAdvance = YES;
-    
+    BCOVPlayerSDKManager *manager = [BCOVPlayerSDKManager sharedManager];
+
     _playerView = [[BCOVPUIPlayerView alloc] initWithPlaybackController:self.playbackController options:nil controlsView:[BCOVPUIBasicControlView basicControlViewWithVODLayout] ];
     _playerView.delegate = self;
     _playerView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
     _playerView.backgroundColor = UIColor.blackColor;
-    
+
+    IMASettings *imaSettings = [[IMASettings alloc] init];
+    imaSettings.ppid = kViewControllerIMAPublisherID;
+    imaSettings.language = kViewControllerIMALanguage;
+
+    IMAAdsRenderingSettings *renderSettings = [[IMAAdsRenderingSettings alloc] init];
+//    renderSettings.webOpenerPresentingController = self;
+//    renderSettings.webOpenerDelegate = self;
+
+    // BCOVIMAAdsRequestPolicy provides methods to specify VAST or VMAP/Server Side Ad Rules. Select the appropriate method to select your ads policy.
+    BCOVIMAAdsRequestPolicy *adsRequestPolicy = [BCOVIMAAdsRequestPolicy videoPropertiesVMAPAdTagUrlAdsRequestPolicy];
+
+    // BCOVIMAPlaybackSessionDelegate defines -willCallIMAAdsLoaderRequestAdsWithRequest:forPosition: which allows us to modify the IMAAdsRequest object
+    // before it is used to load ads.
+    NSDictionary *imaPlaybackSessionOptions = @{ kBCOVIMAOptionIMAPlaybackSessionDelegateKey: self };
+
+    self.playbackController = [manager createIMAPlaybackControllerWithSettings:imaSettings
+                                                          adsRenderingSettings:renderSettings
+                                                              adsRequestPolicy:adsRequestPolicy
+                                                                   adContainer:self.playerView.contentOverlayView
+                                                                companionSlots:nil
+                                                                  viewStrategy:nil
+                                                                       options:imaPlaybackSessionOptions];
+    _playbackController.delegate = self;
+    _playbackController.autoPlay = YES;
+    _playbackController.autoAdvance = YES;
+
     _targetVolume = 1.0;
-    
+
     [self addSubview:_playerView];
 }
 
@@ -40,7 +67,8 @@
     if (_videoId) {
         [_playbackService findVideoWithVideoID:_videoId parameters:nil completion:^(BCOVVideo *video, NSDictionary *jsonResponse, NSError *error) {
             if (video) {
-                [self.playbackController setVideos: @[ video ]];
+                BCOVVideo *fixedVideo = [BrightcovePlayer updateVideoWithVMAPTag:video];
+                [self.playbackController setVideos: @[fixedVideo]];
             } else {
                 [self emitError:error];
             }
@@ -54,6 +82,23 @@
             }
         }];
     }
+}
+
++ (BCOVVideo *)updateVideoWithVMAPTag:(BCOVVideo *)video
+{
+    // Update each video to add the tag.
+    return [video update:^(id<BCOVMutableVideo> mutableVideo) {
+
+        // The BCOVIMA plugin will look for the presence of kBCOVIMAAdTag in
+        // the video's properties when using server side ad rules. This URL returns
+        // a VMAP response that is handled by the Google IMA library.
+        NSDictionary *adProperties = @{ kBCOVIMAAdTag : kViewControllerIMAVMAPResponseAdTag };
+
+        NSMutableDictionary *propertiesToUpdate = [mutableVideo.properties mutableCopy];
+        [propertiesToUpdate addEntriesFromDictionary:adProperties];
+        mutableVideo.properties = propertiesToUpdate;
+
+    }];
 }
 
 - (void)emitError:(NSError *)error {
