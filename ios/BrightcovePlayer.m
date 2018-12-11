@@ -1,14 +1,15 @@
 #import "BrightcovePlayer.h"
 
-@interface BrightcovePlayer () <BCOVPlaybackControllerDelegate, BCOVPUIPlayerViewDelegate>
+@interface BrightcovePlayer () <BCOVPlaybackControllerDelegate, BCOVPUIPlayerViewDelegate, IMAWebOpenerDelegate>
 
 @end
 
 @implementation BrightcovePlayer
 
-static NSString * const kViewControllerIMAVMAPResponseAdTag = @"http://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=%2F15018773%2Feverything2&ciu_szs=300x250%2C468x60%2C728x90&impl=s&gdfp_req=1&env=vp&output=xml_vast2&unviewed_position_start=1&url=dummy&correlator=[timestamp]&cmsid=133&vid=10XWSh7W4so&ad_rule=1";
-static NSString * const kViewControllerIMAPublisherID = @"insertyourpidhere";
-static NSString * const kViewControllerIMALanguage = @"en";
+-(void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:_notificationReceipt];
+}
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
@@ -18,38 +19,10 @@ static NSString * const kViewControllerIMALanguage = @"en";
 }
 
 - (void)setup {
-    BCOVPlayerSDKManager *manager = [BCOVPlayerSDKManager sharedManager];
-
     _playerView = [[BCOVPUIPlayerView alloc] initWithPlaybackController:self.playbackController options:nil controlsView:[BCOVPUIBasicControlView basicControlViewWithVODLayout] ];
     _playerView.delegate = self;
     _playerView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
     _playerView.backgroundColor = UIColor.blackColor;
-
-    IMASettings *imaSettings = [[IMASettings alloc] init];
-    imaSettings.ppid = kViewControllerIMAPublisherID;
-    imaSettings.language = kViewControllerIMALanguage;
-
-    IMAAdsRenderingSettings *renderSettings = [[IMAAdsRenderingSettings alloc] init];
-//    renderSettings.webOpenerPresentingController = self;
-//    renderSettings.webOpenerDelegate = self;
-
-    // BCOVIMAAdsRequestPolicy provides methods to specify VAST or VMAP/Server Side Ad Rules. Select the appropriate method to select your ads policy.
-    BCOVIMAAdsRequestPolicy *adsRequestPolicy = [BCOVIMAAdsRequestPolicy videoPropertiesVMAPAdTagUrlAdsRequestPolicy];
-
-    // BCOVIMAPlaybackSessionDelegate defines -willCallIMAAdsLoaderRequestAdsWithRequest:forPosition: which allows us to modify the IMAAdsRequest object
-    // before it is used to load ads.
-    NSDictionary *imaPlaybackSessionOptions = @{ kBCOVIMAOptionIMAPlaybackSessionDelegateKey: self };
-
-    self.playbackController = [manager createIMAPlaybackControllerWithSettings:imaSettings
-                                                          adsRenderingSettings:renderSettings
-                                                              adsRequestPolicy:adsRequestPolicy
-                                                                   adContainer:self.playerView.contentOverlayView
-                                                                companionSlots:nil
-                                                                  viewStrategy:nil
-                                                                       options:imaPlaybackSessionOptions];
-    _playbackController.delegate = self;
-    _playbackController.autoPlay = YES;
-    _playbackController.autoAdvance = YES;
 
     _targetVolume = 1.0;
 
@@ -57,9 +30,57 @@ static NSString * const kViewControllerIMALanguage = @"en";
 }
 
 - (void)setupService {
-    if (!_playbackService && _accountId && _policyKey) {
+    if (!_playbackService && _accountId && _policyKey && _adRulesUrl) {
+        BCOVPlayerSDKManager *manager = [BCOVPlayerSDKManager sharedManager];
+
+        IMASettings *imaSettings = [[IMASettings alloc] init];
+        //    imaSettings.ppid = @"insertyourpidhere"; // ?
+        imaSettings.language = @"en";
+
+        IMAAdsRenderingSettings *renderSettings = [[IMAAdsRenderingSettings alloc] init];
+        renderSettings.webOpenerDelegate = self;
+
+        // BCOVIMAAdsRequestPolicy provides methods to specify VAST or VMAP/Server Side Ad Rules. Select the appropriate method to select your ads policy.
+        BCOVIMAAdsRequestPolicy *adsRequestPolicy = [BCOVIMAAdsRequestPolicy videoPropertiesVMAPAdTagUrlAdsRequestPolicy];
+
+        // BCOVIMAPlaybackSessionDelegate defines -willCallIMAAdsLoaderRequestAdsWithRequest:forPosition: which allows us to modify the IMAAdsRequest object
+        // before it is used to load ads.
+        NSDictionary *imaPlaybackSessionOptions = @{ kBCOVIMAOptionIMAPlaybackSessionDelegateKey: self };
+
+        self.playbackController = [manager createIMAPlaybackControllerWithSettings:imaSettings
+                                                              adsRenderingSettings:renderSettings
+                                                                  adsRequestPolicy:adsRequestPolicy
+                                                                       adContainer:self.playerView.contentOverlayView
+                                                                    companionSlots:nil
+                                                                      viewStrategy:nil
+                                                                           options:imaPlaybackSessionOptions];
+        _playbackController.delegate = self;
+        _playbackController.autoPlay = YES;
+        _playbackController.autoAdvance = YES;
+
         _playbackService = [[BCOVPlaybackService alloc] initWithAccountId:_accountId policyKey:_policyKey];
+
+        [self resumeAdAfterForeground];
     }
+}
+
+- (void)resumeAdAfterForeground
+{
+    // When the app goes to the background, the Google IMA library will pause
+    // the ad. This code demonstrates how you would resume the ad when entering
+    // the foreground.
+
+    BrightcovePlayer * __weak weakSelf = self;
+
+    self.notificationReceipt = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
+
+        BrightcovePlayer *strongSelf = weakSelf;
+
+        if (strongSelf.adIsPlaying)
+        {
+            [strongSelf.playbackController resumeAd];
+        }
+    }];
 }
 
 - (void)loadMovie {
@@ -67,7 +88,7 @@ static NSString * const kViewControllerIMALanguage = @"en";
     if (_videoId) {
         [_playbackService findVideoWithVideoID:_videoId parameters:nil completion:^(BCOVVideo *video, NSDictionary *jsonResponse, NSError *error) {
             if (video) {
-                BCOVVideo *fixedVideo = [BrightcovePlayer updateVideoWithVMAPTag:video];
+                BCOVVideo *fixedVideo = [BrightcovePlayer updateVideoWithVMAPTag:video : self->_adRulesUrl];
                 [self.playbackController setVideos: @[fixedVideo]];
             } else {
                 [self emitError:error];
@@ -84,7 +105,7 @@ static NSString * const kViewControllerIMALanguage = @"en";
     }
 }
 
-+ (BCOVVideo *)updateVideoWithVMAPTag:(BCOVVideo *)video
++ (BCOVVideo *)updateVideoWithVMAPTag:(BCOVVideo *)video :(NSString *)adRulesUrl
 {
     // Update each video to add the tag.
     return [video update:^(id<BCOVMutableVideo> mutableVideo) {
@@ -92,7 +113,7 @@ static NSString * const kViewControllerIMALanguage = @"en";
         // The BCOVIMA plugin will look for the presence of kBCOVIMAAdTag in
         // the video's properties when using server side ad rules. This URL returns
         // a VMAP response that is handled by the Google IMA library.
-        NSDictionary *adProperties = @{ kBCOVIMAAdTag : kViewControllerIMAVMAPResponseAdTag };
+        NSDictionary *adProperties = @{ kBCOVIMAAdTag : adRulesUrl };
 
         NSMutableDictionary *propertiesToUpdate = [mutableVideo.properties mutableCopy];
         [propertiesToUpdate addEntriesFromDictionary:adProperties];
@@ -139,6 +160,12 @@ static NSString * const kViewControllerIMALanguage = @"en";
 
 - (void)setPolicyKey:(NSString *)policyKey {
     _policyKey = policyKey;
+    [self setupService];
+    [self loadMovie];
+}
+
+- (void)setAdRulesUrl:(NSString *)adRulesUrl {
+    _adRulesUrl = adRulesUrl;
     [self setupService];
     [self loadMovie];
 }
@@ -223,8 +250,8 @@ static NSString * const kViewControllerIMALanguage = @"en";
     if (_lastBufferProgress != bufferProgress) {
         _lastBufferProgress = bufferProgress;
         self.onUpdateBufferProgress(@{
-                          @"bufferProgress": @(bufferProgress),
-                          });
+                                      @"bufferProgress": @(bufferProgress),
+                                      });
     }
 }
 
@@ -243,6 +270,26 @@ static NSString * const kViewControllerIMALanguage = @"en";
             self.onEnterFullscreen(@{});
         }
     }
+}
+
+- (void)playbackController:(id<BCOVPlaybackController>)controller playbackSession:(id<BCOVPlaybackSession>)session didEnterAdSequence:(BCOVAdSequence *)adSequence
+{
+    self.adIsPlaying = YES;
+    self.onAdStarted(@{});
+}
+
+- (void)playbackController:(id<BCOVPlaybackController>)controller playbackSession:(id<BCOVPlaybackSession>)session didExitAdSequence:(BCOVAdSequence *)adSequence
+{
+    self.adIsPlaying = NO;
+    self.onAdCompleted(@{});
+}
+
+#pragma mark - IMAWebOpenerDelegate Methods
+
+- (void)webOpenerDidCloseInAppBrowser:(NSObject *)webOpener
+{
+    // Called when the in-app browser has closed.
+    [self.playbackController resumeAd];
 }
 
 @end

@@ -20,6 +20,7 @@ RCT_EXPORT_VIEW_PROPERTY(policyKey, NSString);
 RCT_EXPORT_VIEW_PROPERTY(accountId, NSString);
 RCT_EXPORT_VIEW_PROPERTY(videoId, NSString);
 RCT_EXPORT_VIEW_PROPERTY(referenceId, NSString);
+RCT_EXPORT_VIEW_PROPERTY(adRulesUrl, NSString);
 RCT_EXPORT_VIEW_PROPERTY(autoPlay, BOOL);
 RCT_EXPORT_VIEW_PROPERTY(play, BOOL);
 RCT_EXPORT_VIEW_PROPERTY(fullscreen, BOOL);
@@ -35,6 +36,9 @@ RCT_EXPORT_VIEW_PROPERTY(onChangeDuration, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onUpdateBufferProgress, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onEnterFullscreen, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onExitFullscreen, RCTDirectEventBlock);
+RCT_EXPORT_VIEW_PROPERTY(onAdStarted, RCTDirectEventBlock);
+RCT_EXPORT_VIEW_PROPERTY(onAdCompleted, RCTDirectEventBlock);
+RCT_EXPORT_VIEW_PROPERTY(onAdError, RCTDirectEventBlock);
 
 RCT_EXPORT_METHOD(seekTo:(nonnull NSNumber *)reactTag seconds:(nonnull NSNumber *)seconds) {
     [self.bridge.uiManager addUIBlock:^(__unused RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {

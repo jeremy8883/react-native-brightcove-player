@@ -28,6 +28,7 @@
 @property (nonatomic, copy) NSString *videoId;
 @property (nonatomic, copy) NSString *accountId;
 @property (nonatomic, copy) NSString *policyKey;
+@property (nonatomic, copy) NSString *adRulesUrl;
 @property (nonatomic, copy) RCTDirectEventBlock onReady;
 @property (nonatomic, copy) RCTDirectEventBlock onPlay;
 @property (nonatomic, copy) RCTDirectEventBlock onPause;
@@ -38,7 +39,13 @@
 @property (nonatomic, copy) RCTDirectEventBlock onUpdateBufferProgress;
 @property (nonatomic, copy) RCTDirectEventBlock onEnterFullscreen;
 @property (nonatomic, copy) RCTDirectEventBlock onExitFullscreen;
+@property (nonatomic, copy) RCTDirectEventBlock onAdStarted;
+@property (nonatomic, copy) RCTDirectEventBlock onAdCompleted;
+@property (nonatomic, copy) RCTDirectEventBlock onAdError;
 
 -(void) seekTo:(NSNumber *)time;
+
+@property (nonatomic, assign) BOOL adIsPlaying;
+@property (nonatomic, strong) id<NSObject> notificationReceipt;
 
 @end
