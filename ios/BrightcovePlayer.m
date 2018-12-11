@@ -33,34 +33,40 @@
     if (!_playbackService && _accountId && _policyKey && _adRulesUrl) {
         BCOVPlayerSDKManager *manager = [BCOVPlayerSDKManager sharedManager];
 
-        IMASettings *imaSettings = [[IMASettings alloc] init];
-        //    imaSettings.ppid = @"insertyourpidhere"; // ?
-        imaSettings.language = @"en";
+        if (![@"NONE" isEqualToString:_adRulesUrl]) {
+            IMASettings *imaSettings = [[IMASettings alloc] init];
+            //    imaSettings.ppid = @"insertyourpidhere"; // ?
+            imaSettings.language = @"en";
 
-        IMAAdsRenderingSettings *renderSettings = [[IMAAdsRenderingSettings alloc] init];
-        renderSettings.webOpenerDelegate = self;
+            IMAAdsRenderingSettings *renderSettings = [[IMAAdsRenderingSettings alloc] init];
+            renderSettings.webOpenerDelegate = self;
 
-        // BCOVIMAAdsRequestPolicy provides methods to specify VAST or VMAP/Server Side Ad Rules. Select the appropriate method to select your ads policy.
-        BCOVIMAAdsRequestPolicy *adsRequestPolicy = [BCOVIMAAdsRequestPolicy videoPropertiesVMAPAdTagUrlAdsRequestPolicy];
+            // BCOVIMAAdsRequestPolicy provides methods to specify VAST or VMAP/Server Side Ad Rules. Select the appropriate method to select your ads policy.
+            BCOVIMAAdsRequestPolicy *adsRequestPolicy = [BCOVIMAAdsRequestPolicy videoPropertiesVMAPAdTagUrlAdsRequestPolicy];
 
-        // BCOVIMAPlaybackSessionDelegate defines -willCallIMAAdsLoaderRequestAdsWithRequest:forPosition: which allows us to modify the IMAAdsRequest object
-        // before it is used to load ads.
-        NSDictionary *imaPlaybackSessionOptions = @{ kBCOVIMAOptionIMAPlaybackSessionDelegateKey: self };
+            // BCOVIMAPlaybackSessionDelegate defines -willCallIMAAdsLoaderRequestAdsWithRequest:forPosition: which allows us to modify the IMAAdsRequest object
+            // before it is used to load ads.
+            NSDictionary *imaPlaybackSessionOptions = @{ kBCOVIMAOptionIMAPlaybackSessionDelegateKey: self };
 
-        self.playbackController = [manager createIMAPlaybackControllerWithSettings:imaSettings
-                                                              adsRenderingSettings:renderSettings
-                                                                  adsRequestPolicy:adsRequestPolicy
-                                                                       adContainer:self.playerView.contentOverlayView
-                                                                    companionSlots:nil
-                                                                      viewStrategy:nil
-                                                                           options:imaPlaybackSessionOptions];
+            self.playbackController = [manager createIMAPlaybackControllerWithSettings:imaSettings
+                                                                  adsRenderingSettings:renderSettings
+                                                                      adsRequestPolicy:adsRequestPolicy
+                                                                           adContainer:self.playerView.contentOverlayView
+                                                                        companionSlots:nil
+                                                                          viewStrategy:nil
+                                                                               options:imaPlaybackSessionOptions];
+        } else {
+            _playbackController = [BCOVPlayerSDKManager.sharedManager createPlaybackController];
+        }
         _playbackController.delegate = self;
         _playbackController.autoPlay = YES;
         _playbackController.autoAdvance = YES;
 
         _playbackService = [[BCOVPlaybackService alloc] initWithAccountId:_accountId policyKey:_policyKey];
 
-        [self resumeAdAfterForeground];
+        if (![@"NONE" isEqualToString:_adRulesUrl]) {
+            [self resumeAdAfterForeground];
+        }
     }
 }
 
@@ -88,8 +94,12 @@
     if (_videoId) {
         [_playbackService findVideoWithVideoID:_videoId parameters:nil completion:^(BCOVVideo *video, NSDictionary *jsonResponse, NSError *error) {
             if (video) {
-                BCOVVideo *fixedVideo = [BrightcovePlayer updateVideoWithVMAPTag:video : self->_adRulesUrl];
-                [self.playbackController setVideos: @[fixedVideo]];
+                if (![@"NONE" isEqualToString:self->_adRulesUrl]) {
+                    BCOVVideo *fixedVideo = [BrightcovePlayer updateVideoWithVMAPTag:video : self->_adRulesUrl];
+                    [self.playbackController setVideos: @[fixedVideo]];
+                } else {
+                    [self.playbackController setVideos: @[video]];
+                }
             } else {
                 [self emitError:error];
             }
@@ -288,8 +298,10 @@
 
 - (void)webOpenerDidCloseInAppBrowser:(NSObject *)webOpener
 {
-    // Called when the in-app browser has closed.
-    [self.playbackController resumeAd];
+    if (![@"NONE" isEqualToString:_adRulesUrl]) {
+        // Called when the in-app browser has closed.
+        [self.playbackController resumeAd];
+    }
 }
 
 @end
