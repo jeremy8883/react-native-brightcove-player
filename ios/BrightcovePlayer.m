@@ -19,14 +19,14 @@
 }
 
 - (void)setup {
-    _playerView = [[BCOVPUIPlayerView alloc] initWithPlaybackController:self.playbackController options:nil controlsView:[BCOVPUIBasicControlView basicControlViewWithVODLayout] ];
+    _playerView = [[BCOVPUIPlayerView alloc] initWithPlaybackController:nil options:nil controlsView:[BCOVPUIBasicControlView basicControlViewWithVODLayout] ];
     _playerView.delegate = self;
     _playerView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
     _playerView.backgroundColor = UIColor.blackColor;
 
-    _targetVolume = 1.0;
-
     [self addSubview:_playerView];
+
+    _targetVolume = 1.0;
 }
 
 - (void)setupService {
@@ -61,6 +61,8 @@
         _playbackController.delegate = self;
         _playbackController.autoPlay = YES;
         _playbackController.autoAdvance = YES;
+
+        _playerView.playbackController = self.playbackController;
 
         _playbackService = [[BCOVPlaybackService alloc] initWithAccountId:_accountId policyKey:_policyKey];
 
