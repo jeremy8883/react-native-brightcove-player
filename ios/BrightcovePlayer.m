@@ -1,6 +1,6 @@
 #import "BrightcovePlayer.h"
 
-@interface BrightcovePlayer () <BCOVPlaybackControllerDelegate, BCOVPUIPlayerViewDelegate, IMAWebOpenerDelegate>
+@interface BrightcovePlayer () <BCOVPlaybackControllerDelegate, BCOVPUIPlayerViewDelegate, IMAAdsLoaderDelegate, IMAAdsManagerDelegate, IMAWebOpenerDelegate>
 
 @end
 
@@ -31,64 +31,20 @@
 
 - (void)setupService {
     if (!_playbackService && _accountId && _policyKey && _adRulesUrl) {
-        BCOVPlayerSDKManager *manager = [BCOVPlayerSDKManager sharedManager];
-
         if (![@"NONE" isEqualToString:_adRulesUrl]) {
-            IMASettings *imaSettings = [[IMASettings alloc] init];
-            //    imaSettings.ppid = @"insertyourpidhere"; // ?
-            imaSettings.language = @"en";
-
-            IMAAdsRenderingSettings *renderSettings = [[IMAAdsRenderingSettings alloc] init];
-            renderSettings.webOpenerDelegate = self;
-
-            // BCOVIMAAdsRequestPolicy provides methods to specify VAST or VMAP/Server Side Ad Rules. Select the appropriate method to select your ads policy.
-            BCOVIMAAdsRequestPolicy *adsRequestPolicy = [BCOVIMAAdsRequestPolicy videoPropertiesVMAPAdTagUrlAdsRequestPolicy];
-
-            // BCOVIMAPlaybackSessionDelegate defines -willCallIMAAdsLoaderRequestAdsWithRequest:forPosition: which allows us to modify the IMAAdsRequest object
-            // before it is used to load ads.
-            NSDictionary *imaPlaybackSessionOptions = @{ kBCOVIMAOptionIMAPlaybackSessionDelegateKey: self };
-
-            self.playbackController = [manager createIMAPlaybackControllerWithSettings:imaSettings
-                                                                  adsRenderingSettings:renderSettings
-                                                                      adsRequestPolicy:adsRequestPolicy
-                                                                           adContainer:self.playerView.contentOverlayView
-                                                                        companionSlots:nil
-                                                                          viewStrategy:nil
-                                                                               options:imaPlaybackSessionOptions];
-        } else {
-            _playbackController = [BCOVPlayerSDKManager.sharedManager createPlaybackController];
+            [self setupAdsLoader];
+            [self requestAds];
         }
+
+        _playbackController = [BCOVPlayerSDKManager.sharedManager createPlaybackController];
         _playbackController.delegate = self;
-        _playbackController.autoPlay = YES;
-        _playbackController.autoAdvance = YES;
+        _playbackController.autoPlay = NO;
+        _playbackController.autoAdvance = NO;
 
         _playerView.playbackController = self.playbackController;
 
         _playbackService = [[BCOVPlaybackService alloc] initWithAccountId:_accountId policyKey:_policyKey];
-
-        if (![@"NONE" isEqualToString:_adRulesUrl]) {
-            [self resumeAdAfterForeground];
-        }
     }
-}
-
-- (void)resumeAdAfterForeground
-{
-    // When the app goes to the background, the Google IMA library will pause
-    // the ad. This code demonstrates how you would resume the ad when entering
-    // the foreground.
-
-    BrightcovePlayer * __weak weakSelf = self;
-
-    self.notificationReceipt = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
-
-        BrightcovePlayer *strongSelf = weakSelf;
-
-        if (strongSelf.adIsPlaying)
-        {
-            [strongSelf.playbackController resumeAd];
-        }
-    }];
 }
 
 - (void)loadMovie {
@@ -97,11 +53,9 @@
         [_playbackService findVideoWithVideoID:_videoId parameters:nil completion:^(BCOVVideo *video, NSDictionary *jsonResponse, NSError *error) {
             if (video) {
                 if (![@"NONE" isEqualToString:self->_adRulesUrl]) {
-                    BCOVVideo *fixedVideo = [BrightcovePlayer updateVideoWithVMAPTag:video : self->_adRulesUrl];
-                    [self.playbackController setVideos: @[fixedVideo]];
-                } else {
-                    [self.playbackController setVideos: @[video]];
+                    [self requestAds];
                 }
+                [self.playbackController setVideos: @[video]];
             } else {
                 [self emitError:error];
             }
@@ -117,22 +71,81 @@
     }
 }
 
-+ (BCOVVideo *)updateVideoWithVMAPTag:(BCOVVideo *)video :(NSString *)adRulesUrl
-{
-    // Update each video to add the tag.
-    return [video update:^(id<BCOVMutableVideo> mutableVideo) {
+#pragma mark Google Interactive Media Ads (IMA) SDK Setup
 
-        // The BCOVIMA plugin will look for the presence of kBCOVIMAAdTag in
-        // the video's properties when using server side ad rules. This URL returns
-        // a VMAP response that is handled by the Google IMA library.
-        NSDictionary *adProperties = @{ kBCOVIMAAdTag : adRulesUrl };
-
-        NSMutableDictionary *propertiesToUpdate = [mutableVideo.properties mutableCopy];
-        [propertiesToUpdate addEntriesFromDictionary:adProperties];
-        mutableVideo.properties = propertiesToUpdate;
-
-    }];
+- (void)setupAdsLoader {
+    self.adsLoader = [[IMAAdsLoader alloc] initWithSettings:nil];
+    self.adsLoader.delegate = self;
 }
+
+- (void)requestAds {
+    // Create an ad display container for ad rendering.
+    IMAAdDisplayContainer *adDisplayContainer =
+    [[IMAAdDisplayContainer alloc] initWithAdContainer:_playerView companionSlots:nil];
+    // Create an ad request with our ad tag, display container, and optional user context.
+    IMAAdsRequest *request = [[IMAAdsRequest alloc] initWithAdTagUrl:_adRulesUrl
+                                                  adDisplayContainer:adDisplayContainer
+                              // contentPlayhead are required for mid-rolls. You'll need to implement yourself if you need this funcationality.
+                                                         contentPlayhead:nil
+                                                         userContext:nil];
+    [self.adsLoader requestAdsWithRequest:request];
+}
+
+#pragma mark AdsLoader Delegates
+
+- (void)adsLoader:(IMAAdsLoader *)loader adsLoadedWithData:(IMAAdsLoadedData *)adsLoadedData {
+    // Grab the instance of the IMAAdsManager and set ourselves as the delegate.
+    self.adsManager = adsLoadedData.adsManager;
+    self.adsManager.delegate = self;
+    // Create ads rendering settings to tell the SDK to use the in-app browser.
+    IMAAdsRenderingSettings *adsRenderingSettings = [[IMAAdsRenderingSettings alloc] init];
+    adsRenderingSettings.webOpenerDelegate = self;
+    adsRenderingSettings.webOpenerPresentingController = self.reactViewController;
+    // Initialize the ads manager.
+    [self.adsManager initializeWithAdsRenderingSettings:adsRenderingSettings];
+}
+
+- (void)adsLoader:(IMAAdsLoader *)loader failedWithErrorData:(IMAAdLoadingErrorData *)adErrorData {
+    // Something went wrong loading ads. Log the error and play the content.
+    NSLog(@"Error loading ads: %@", adErrorData.adError.message);
+    // TODO for some reason this callback will get called, even though adsLoadedWithData is also getting called
+    // successfully.
+//    [_playbackController play];
+}
+
+#pragma mark AdsManager Delegates
+
+- (void)adsManager:(IMAAdsManager *)adsManager didReceiveAdEvent:(IMAAdEvent *)event {
+    // When the SDK notified us that ads have been loaded, play them.
+    if (event.type == kIMAAdEvent_LOADED) {
+        [adsManager start];
+    } else if (event.type == kIMAAdEvent_STARTED) {
+        self.adIsPlaying = YES;
+        self.onAdStarted(@{});
+    } else if (event.type == kIMAAdEvent_COMPLETE) {
+        self.adIsPlaying = NO;
+        self.onAdCompleted(@{});
+    }
+}
+
+- (void)adsManager:(IMAAdsManager *)adsManager didReceiveAdError:(IMAAdError *)error {
+    // Something went wrong with the ads manager after ads were loaded. Log the error and play the
+    // content.
+    NSLog(@"AdsManager error: %@", error.message);
+    [_playbackController play];
+}
+
+- (void)adsManagerDidRequestContentPause:(IMAAdsManager *)adsManager {
+    // The SDK is going to play ads, so pause the content.
+    [_playbackController pause];
+}
+
+- (void)adsManagerDidRequestContentResume:(IMAAdsManager *)adsManager {
+    // The SDK is done playing ads (at least for now), so resume the content.
+    [_playbackController play];
+}
+
+#pragma mark getters / setters
 
 - (void)emitError:(NSError *)error {
     if (!self.onError) {
@@ -142,12 +155,6 @@
     NSString *code = [NSString stringWithFormat:@"%ld", (long)[error code]];
 
     self.onError(@{@"error_code": code, @"message": [error localizedDescription]});
-}
-
-- (id<BCOVPlaybackController>)createPlaybackController {
-    BCOVBasicSessionProviderOptions *options = [BCOVBasicSessionProviderOptions alloc];
-    BCOVBasicSessionProvider *provider = [[BCOVPlayerSDKManager sharedManager] createBasicSessionProviderWithOptions:options];
-    return [BCOVPlayerSDKManager.sharedManager createPlaybackControllerWithSessionProvider:provider viewStrategy:nil];
 }
 
 - (void)setReferenceId:(NSString *)referenceId {
@@ -284,25 +291,13 @@
     }
 }
 
-- (void)playbackController:(id<BCOVPlaybackController>)controller playbackSession:(id<BCOVPlaybackSession>)session didEnterAdSequence:(BCOVAdSequence *)adSequence
-{
-    self.adIsPlaying = YES;
-    self.onAdStarted(@{});
-}
-
-- (void)playbackController:(id<BCOVPlaybackController>)controller playbackSession:(id<BCOVPlaybackSession>)session didExitAdSequence:(BCOVAdSequence *)adSequence
-{
-    self.adIsPlaying = NO;
-    self.onAdCompleted(@{});
-}
-
 #pragma mark - IMAWebOpenerDelegate Methods
 
 - (void)webOpenerDidCloseInAppBrowser:(NSObject *)webOpener
 {
     if (![@"NONE" isEqualToString:_adRulesUrl]) {
         // Called when the in-app browser has closed.
-        [self.playbackController resumeAd];
+        [_adsManager resume];
     }
 }
 

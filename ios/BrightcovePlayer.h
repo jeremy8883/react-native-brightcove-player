@@ -8,7 +8,6 @@
 #import <BrightcovePlayerSDK/BCOVPUIBasicControlView.h>
 #import <BrightcovePlayerSDK/BCOVPlaybackSession.h>
 #import <BrightcovePlayerSDK/BCOVPUISlider.h>
-#import <BrightcoveIMA/BrightcoveIMA.h>
 #import <GoogleInteractiveMediaAds/IMASettings.h>
 #import <GoogleInteractiveMediaAds/IMAAdsRenderingSettings.h>
 #import <React/RCTBridge.h>
@@ -47,5 +46,15 @@
 
 @property (nonatomic, assign) BOOL adIsPlaying;
 @property (nonatomic, strong) id<NSObject> notificationReceipt;
+
+// - Google Interactive Media Ads (IMA) SDK -
+// Getting started docs here:
+//    https://developers.google.com/interactive-media-ads/docs/sdks/ios/
+
+// Entry point for the SDK. Used to make ad requests.
+// Note, mid and post-rolls have not been implemented, only pre-rolls. You'll have to do this yourself if you need them.
+@property(nonatomic, strong) IMAAdsLoader *adsLoader;
+// Main point of interaction with the SDK. Created by the SDK as the result of an ad request.
+@property(nonatomic, strong) IMAAdsManager *adsManager;
 
 @end
