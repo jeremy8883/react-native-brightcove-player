@@ -59,6 +59,10 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
     // We need to keep track of the current ad playback position, because when we resume the
     // ad, it automatically restarts.
     private int adPosition = 0;
+    // The VIDEO_DURATION_CHANGED event doesn't get called if there is a pre-roll add.
+    // So we need to keep track of the last duration fetched, so if it changes, we can send the
+    // updated value back to the RN layer.
+    private int lastDuration = 0;
 
     public BrightcovePlayerView(ThemedReactContext context) {
         this(context, null);
@@ -121,6 +125,8 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
         eventEmitter.on(EventType.PROGRESS, new EventListener() {
             @Override
             public void processEvent(Event e) {
+                sendDurationEventIfChanged();
+
                 WritableMap event = Arguments.createMap();
                 Long playhead = (Long)e.properties.get(Event.PLAYHEAD_POSITION);
                 event.putDouble("currentTime", playhead / 1000d);
@@ -150,15 +156,14 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
             @Override
             public void processEvent(Event e) {
                 Integer duration = (Integer)e.properties.get(Event.VIDEO_DURATION);
-                WritableMap event = Arguments.createMap();
-                event.putDouble("duration", duration / 1000d);
-                ReactContext reactContext = (ReactContext) BrightcovePlayerView.this.getContext();
-                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(BrightcovePlayerView.this.getId(), BrightcovePlayerManager.EVENT_CHANGE_DURATION, event);
+                onVideoDurationChanged(duration);
             }
         });
         eventEmitter.on(EventType.BUFFERED_UPDATE, new EventListener() {
             @Override
             public void processEvent(Event e) {
+                sendDurationEventIfChanged();
+
                 Integer percentComplete = (Integer)e.properties.get(Event.PERCENT_COMPLETE);
                 WritableMap event = Arguments.createMap();
                 event.putDouble("bufferProgress", percentComplete / 100d);
@@ -196,6 +201,26 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
 
         // Because nothing is easy, we don't add the `playerVideoView` yet.
         // We wait until after the layout request (see `requestLayout` below).
+    }
+
+    // The VIDEO_DURATION_CHANGED event doesn't get called if there is a pre-roll add.
+    // This is a hack to send the duration back up to the RN layer when we know it.
+    private void sendDurationEventIfChanged() {
+        if (playerVideoView == null) return;
+
+        int duration = playerVideoView.getDuration();
+        if (duration != lastDuration) {
+            onVideoDurationChanged(duration);
+        }
+    }
+
+    private void onVideoDurationChanged(int duration) {
+        lastDuration = duration;
+
+        WritableMap event = Arguments.createMap();
+        event.putDouble("duration", duration / 1000d);
+        ReactContext reactContext = (ReactContext) BrightcovePlayerView.this.getContext();
+        reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(BrightcovePlayerView.this.getId(), BrightcovePlayerManager.EVENT_CHANGE_DURATION, event);
     }
 
     @Override
