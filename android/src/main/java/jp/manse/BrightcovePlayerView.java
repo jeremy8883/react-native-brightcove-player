@@ -1,10 +1,15 @@
 package jp.manse;
 
+import android.arch.lifecycle.Lifecycle;
+import android.arch.lifecycle.LifecycleObserver;
+import android.arch.lifecycle.OnLifecycleEvent;
+import android.arch.lifecycle.ProcessLifecycleOwner;
 import android.graphics.Color;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceView;
+import android.view.View;
 import android.widget.RelativeLayout;
 
 import com.brightcove.ima.GoogleIMAComponent;
@@ -32,7 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BrightcovePlayerView extends RelativeLayout {
+public class BrightcovePlayerView extends RelativeLayout implements LifecycleObserver {
     private boolean playerVideoViewWasAdded = false;
 
     private ThemedReactContext context;
@@ -50,6 +55,10 @@ public class BrightcovePlayerView extends RelativeLayout {
     private GoogleIMAComponent googleIMAComponent;
     private String adRulesUrl = null;
     private EventEmitter eventEmitter = null;
+    private boolean isAdStarted = false;
+    // We need to keep track of the current ad playback position, because when we resume the
+    // ad, it automatically restarts.
+    private int adPosition = 0;
 
     public BrightcovePlayerView(ThemedReactContext context) {
         this(context, null);
@@ -189,6 +198,19 @@ public class BrightcovePlayerView extends RelativeLayout {
         // We wait until after the layout request (see `requestLayout` below).
     }
 
+    @Override
+    public void onViewAdded(View child) {
+        super.onViewAdded(child);
+
+        ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
+    }
+
+    @Override
+    public void onViewRemoved(View child) {
+        super.onViewRemoved(child);
+
+        ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
+    }
 
     @Override
     public void requestLayout() {
@@ -217,6 +239,17 @@ public class BrightcovePlayerView extends RelativeLayout {
         });
     }
 
+    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    private void onLifecycleResume() {
+        if (isAdStarted && googleIMAComponent != null && googleIMAComponent.getVideoAdPlayer() != null) {
+            // The ad auto pauses when the user taps "View advertiser" (or minimizes the app, or
+            // sleeps their phone).
+            // And for some reason, calling `resumeAd` will not resume it...it will restart and play it
+            googleIMAComponent.getVideoAdPlayer().seekTo(adPosition);
+            googleIMAComponent.getVideoAdPlayer().resumeAd();
+        }
+    }
+
     private void setupGoogleIMA() {
         // This was required since we are using `null` to say that we don't have the value yet.
         if ("NONE".equals(adRulesUrl)) return;
@@ -229,6 +262,8 @@ public class BrightcovePlayerView extends RelativeLayout {
             @Override
             public void processEvent(Event e) {
                 emitEvent(BrightcovePlayerManager.EVENT_AD_STARTED, null);
+                isAdStarted = true;
+                adPosition = 0;
             }
         });
 
@@ -237,6 +272,15 @@ public class BrightcovePlayerView extends RelativeLayout {
             @Override
             public void processEvent(Event event) {
                 emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, null);
+                isAdStarted = false;
+                adPosition = 0;
+            }
+        });
+
+        eventEmitter.on(EventType.AD_PROGRESS, new EventListener() {
+            @Override
+            public void processEvent(Event e) {
+                adPosition = (Integer) e.properties.get(Event.PLAYHEAD_POSITION);
             }
         });
 
@@ -246,6 +290,7 @@ public class BrightcovePlayerView extends RelativeLayout {
             public void processEvent(Event event) {
                 WritableMap error = mapToRnWritableMap(event.properties);
                 emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, error);
+                isAdStarted = false;
             }
         });
 
