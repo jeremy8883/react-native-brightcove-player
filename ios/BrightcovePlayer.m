@@ -108,9 +108,12 @@
 - (void)adsLoader:(IMAAdsLoader *)loader failedWithErrorData:(IMAAdLoadingErrorData *)adErrorData {
     // Something went wrong loading ads. Log the error and play the content.
     NSLog(@"Error loading ads: %@", adErrorData.adError.message);
+    // Error code 1009: "The VAST response document is empty."
     // TODO for some reason this callback will get called, even though adsLoadedWithData is also getting called
     // successfully.
-//    [_playbackController play];
+    if (adErrorData.adError.code != 1009) {
+        [_playbackController play];
+    }
 }
 
 #pragma mark AdsManager Delegates
