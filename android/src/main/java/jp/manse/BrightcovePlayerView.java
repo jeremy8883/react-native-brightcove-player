@@ -175,6 +175,13 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
             @Override
             public void processEvent(Event e) {
                 WritableMap error = mapToRnWritableMap(e.properties);
+                // The DID_FAIL_TO_PLAY_AD event will have already been called. No need to send
+                // out an error twice. We also want to separate brightcove errors from ima errors,
+                // since if the pre-roll fails, we want to ignore the problem and just play the
+                // video.
+                if (error.hasKey("adId")) {
+                    return;
+                }
                 emitEvent(BrightcovePlayerManager.EVENT_ERROR, error);
             }
         });
@@ -296,7 +303,7 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
         eventEmitter.on(GoogleIMAEventType.DID_FAIL_TO_PLAY_AD, new EventListener() {
             @Override
             public void processEvent(Event event) {
-                emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, null);
+                emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, mapToRnWritableMap(event.getProperties()));
                 isAdStarted = false;
                 adPosition = 0;
             }
@@ -375,6 +382,8 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
                 writableMap.putBoolean(key, (Boolean)val);
             } else if (val instanceof Double) {
                 writableMap.putDouble(key, (Double)val);
+            } else if (val == null) {
+                writableMap.putNull(key);
             }
         }
 
