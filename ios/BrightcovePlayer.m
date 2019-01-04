@@ -33,7 +33,6 @@
     if (!_playbackService && _accountId && _policyKey && _adRulesUrl) {
         if (![@"NONE" isEqualToString:_adRulesUrl]) {
             [self setupAdsLoader];
-            [self requestAds];
         }
 
         _playbackController = [BCOVPlayerSDKManager.sharedManager createPlaybackController];
@@ -108,12 +107,7 @@
 - (void)adsLoader:(IMAAdsLoader *)loader failedWithErrorData:(IMAAdLoadingErrorData *)adErrorData {
     // Something went wrong loading ads. Log the error and play the content.
     NSLog(@"Error loading ads: %@", adErrorData.adError.message);
-    // Error code 1009: "The VAST response document is empty."
-    // TODO for some reason this callback will get called, even though adsLoadedWithData is also getting called
-    // successfully.
-    if (adErrorData.adError.code != 1009) {
-        [_playbackController play];
-    }
+    [_playbackController play];
 }
 
 #pragma mark AdsManager Delegates
