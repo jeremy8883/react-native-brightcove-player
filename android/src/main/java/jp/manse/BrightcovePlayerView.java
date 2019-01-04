@@ -303,7 +303,8 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
         eventEmitter.on(GoogleIMAEventType.DID_FAIL_TO_PLAY_AD, new EventListener() {
             @Override
             public void processEvent(Event event) {
-                emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, mapToRnWritableMap(event.getProperties()));
+                WritableMap error = mapToRnWritableMap(event.properties);
+                emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, error);
                 isAdStarted = false;
                 adPosition = 0;
             }
@@ -320,8 +321,8 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
         eventEmitter.on(EventType.AD_COMPLETED, new EventListener() {
             @Override
             public void processEvent(Event event) {
-                WritableMap error = mapToRnWritableMap(event.properties);
-                emitEvent(BrightcovePlayerManager.EVENT_AD_ERROR, error);
+                WritableMap data = mapToRnWritableMap(event.properties);
+                emitEvent(BrightcovePlayerManager.EVENT_AD_COMPLETED, data);
                 isAdStarted = false;
             }
         });
