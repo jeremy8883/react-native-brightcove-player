@@ -105,8 +105,12 @@
 }
 
 - (void)adsLoader:(IMAAdsLoader *)loader failedWithErrorData:(IMAAdLoadingErrorData *)adErrorData {
-    // Something went wrong loading ads. Log the error and play the content.
-    NSLog(@"Error loading ads: %@", adErrorData.adError.message);
+    // Something went wrong loading ads.
+    NSString *errorCode = [NSString stringWithFormat:@"%ld", (long)adErrorData.adError.code];
+    self.onAdError(@{
+        @"error_code": errorCode,
+        @"message": adErrorData.adError.message,
+    });
     [_playbackController play];
 }
 
@@ -126,9 +130,12 @@
 }
 
 - (void)adsManager:(IMAAdsManager *)adsManager didReceiveAdError:(IMAAdError *)error {
-    // Something went wrong with the ads manager after ads were loaded. Log the error and play the
-    // content.
-    NSLog(@"AdsManager error: %@", error.message);
+    // Something went wrong with the ads manager after ads were loaded.
+    NSString *errorCode = [NSString stringWithFormat:@"%ld", (long)error.code];
+    self.onAdError(@{
+      @"error_code": errorCode,
+      @"message": error.message,
+    });
     [_playbackController play];
 }
 
