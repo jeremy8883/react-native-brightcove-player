@@ -243,7 +243,6 @@
 					"$(SRCROOT)/../example/ios",
 					"$(SRCROOT)/../../../ios",
 					"$(SRCROOT)/../../../ios/Pods/Brightcove-Player-Core/**",
-					"$(SRCROOT)/../../../ios/Pods/Brightcove-Player-IMA/**",
 					"$(SRCROOT)/../../../ios/Pods/GoogleAds-IMA-iOS-SDK/**",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -270,8 +269,7 @@
 					"$(SRCROOT)/../example/ios",
 					"$(SRCROOT)/../../../ios",
 					"$(SRCROOT)/../../../ios/Pods/Brightcove-Player-Core/**",
-					"$(SRCROOT)/../../../ios/Pods/Brightcove-Player-IMA/**",
-                    "$(SRCROOT)/../../../ios/Pods/GoogleAds-IMA-iOS-SDK/**",
+					"$(SRCROOT)/../../../ios/Pods/GoogleAds-IMA-iOS-SDK/**",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(BUILT_PRODUCTS_DIR)",
