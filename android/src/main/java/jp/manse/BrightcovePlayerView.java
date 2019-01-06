@@ -9,7 +9,6 @@ import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceView;
-import android.view.View;
 import android.widget.RelativeLayout;
 
 import com.brightcove.ima.GoogleIMAComponent;
@@ -231,17 +230,22 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
     }
 
     @Override
-    public void onViewAdded(View child) {
-        super.onViewAdded(child);
-
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
         ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
     }
 
     @Override
-    public void onViewRemoved(View child) {
-        super.onViewRemoved(child);
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
 
         ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
+
+        // I'm not sure if this is needed, but just in case
+        if (playerVideoView != null) {
+            playerVideoView.pause();
+            playerVideoView.clear();
+        }
     }
 
     @Override
@@ -333,6 +337,8 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
         eventEmitter.on(GoogleIMAEventType.ADS_REQUEST_FOR_VIDEO, new EventListener() {
             @Override
             public void processEvent(Event event) {
+                if (!isAttachedToWindow()) return;
+
                 // Create a container object for the ads to be presented.
                 AdDisplayContainer container = sdkFactory.createAdDisplayContainer();
                 container.setPlayer(googleIMAComponent.getVideoAdPlayer());
@@ -477,6 +483,10 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
             @Override
             public void onVideo(Video video) {
                 BrightcovePlayerView.this.playerVideoView.clear();
+
+                // ie. if the user goes back before the video is even fetched, don't do anything else
+                if (!isAttachedToWindow()) return;
+
                 BrightcovePlayerView.this.playerVideoView.add(video);
                 if (BrightcovePlayerView.this.autoPlay) {
                     BrightcovePlayerView.this.playerVideoView.start();
