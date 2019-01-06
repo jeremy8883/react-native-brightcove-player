@@ -96,6 +96,10 @@
     // Grab the instance of the IMAAdsManager and set ourselves as the delegate.
     self.adsManager = adsLoadedData.adsManager;
     self.adsManager.delegate = self;
+    // Reduce ad volume by half. This was code found in the brightcove samples. It
+    // was copied over because the ads were playing very loudly compared to the
+    // actual video content.
+    self.adsManager.volume = self.adsManager.volume / 2.0;
     // Create ads rendering settings to tell the SDK to use the in-app browser.
     IMAAdsRenderingSettings *adsRenderingSettings = [[IMAAdsRenderingSettings alloc] init];
     adsRenderingSettings.webOpenerDelegate = self;
