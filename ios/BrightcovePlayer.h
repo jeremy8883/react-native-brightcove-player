@@ -56,5 +56,8 @@
 @property(nonatomic, strong) IMAAdsLoader *adsLoader;
 // Main point of interaction with the SDK. Created by the SDK as the result of an ad request.
 @property(nonatomic, strong) IMAAdsManager *adsManager;
+// Keep track of when the ad webbrowesr is open, so we resume the ad when the app returned to the foreground, we don't do
+// so while the browser is still open.
+@property(nonatomic, assign) BOOL *isAdBrowserOpen;
 
 @end
