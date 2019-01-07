@@ -39,6 +39,8 @@ RCT_EXPORT_VIEW_PROPERTY(onExitFullscreen, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onAdStarted, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onAdCompleted, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onAdError, RCTDirectEventBlock);
+RCT_EXPORT_VIEW_PROPERTY(onAdOpenInBrowser, RCTDirectEventBlock);
+RCT_EXPORT_VIEW_PROPERTY(onAdReturnFromBrowser, RCTDirectEventBlock);
 
 RCT_EXPORT_METHOD(seekTo:(nonnull NSNumber *)reactTag seconds:(nonnull NSNumber *)seconds) {
     [self.bridge.uiManager addUIBlock:^(__unused RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {

@@ -41,6 +41,8 @@
 @property (nonatomic, copy) RCTDirectEventBlock onAdStarted;
 @property (nonatomic, copy) RCTDirectEventBlock onAdCompleted;
 @property (nonatomic, copy) RCTDirectEventBlock onAdError;
+@property (nonatomic, copy) RCTDirectEventBlock onAdOpenInBrowser;
+@property (nonatomic, copy) RCTDirectEventBlock onAdReturnFromBrowser;
 
 -(void) seekTo:(NSNumber *)time;
 
@@ -58,6 +60,6 @@
 @property(nonatomic, strong) IMAAdsManager *adsManager;
 // Keep track of when the ad webbrowesr is open, so we resume the ad when the app returned to the foreground, we don't do
 // so while the browser is still open.
-@property(nonatomic, assign) BOOL *isAdBrowserOpen;
+@property(nonatomic, assign) BOOL isAdBrowserOpen;
 
 @end

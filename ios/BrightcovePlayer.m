@@ -43,7 +43,7 @@
         _playerView.playbackController = self.playbackController;
 
         _playbackService = [[BCOVPlaybackService alloc] initWithAccountId:_accountId policyKey:_policyKey];
-
+        
         [self resumeAdAfterForeground];
     }
 }
@@ -97,10 +97,10 @@
     // When the app goes to the background, the Google IMA library will pause
     // the ad. This code resumes the ad when enteringthe foreground.
     BrightcovePlayer * __weak weakSelf = self;
-
+    
     self.notificationReceipt = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
         BrightcovePlayer *strongSelf = weakSelf;
-
+        
         if (strongSelf.adIsPlaying && strongSelf.adsManager && !strongSelf.isAdBrowserOpen) {
             [strongSelf.adsManager resume];
         }
@@ -320,6 +320,9 @@
 
 - (void)webOpenerDidOpenInAppBrowser:(NSObject *)webOpener {
     _isAdBrowserOpen = YES;
+    if (self.onAdOpenInBrowser) {
+        self.onAdOpenInBrowser(@{});
+    }
 }
 
 - (void)webOpenerDidCloseInAppBrowser:(NSObject *)webOpener {
@@ -327,6 +330,9 @@
     if (![@"NONE" isEqualToString:_adRulesUrl]) {
         // Called when the in-app browser has closed.
         [_adsManager resume];
+    }
+    if (self.onAdReturnFromBrowser) {
+        self.onAdReturnFromBrowser(@{});
     }
 }
 

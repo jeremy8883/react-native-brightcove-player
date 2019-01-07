@@ -86,10 +86,10 @@ class BrightcovePlayer extends Component {
           this.setState({ androidFullscreen: fullscreen });
           if (fullscreen) {
             this.props.onEnterFullscreen &&
-              this.props.onEnterFullscreen(event.nativeEvent);
+            this.props.onEnterFullscreen(event.nativeEvent);
           } else {
             this.props.onExitFullscreen &&
-              this.props.onExitFullscreen(event.nativeEvent);
+            this.props.onExitFullscreen(event.nativeEvent);
           }
         }}
         onAdStarted={event =>
@@ -103,6 +103,14 @@ class BrightcovePlayer extends Component {
         onAdError={event =>
           this.props.onAdError &&
           this.props.onAdError(event.nativeEvent)
+        }
+        onAdOpenInBrowser={event =>
+          this.props.onAdOpenInBrowser &&
+          this.props.onAdOpenInBrowser(event.nativeEvent)
+        }
+        onAdReturnFromBrowser={event =>
+          this.props.onAdReturnFromBrowser &&
+          this.props.onAdReturnFromBrowser(event.nativeEvent)
         }
       />
     );
@@ -152,6 +160,9 @@ BrightcovePlayer.propTypes = {
   onAdStarted: PropTypes.func,
   onAdCompleted: PropTypes.func,
   onAdError: PropTypes.func,
+  // Warning: only supported in ios for now
+  onAdOpenInBrowser: PropTypes.func,
+  onAdReturnFromBrowser: PropTypes.func,
 };
 
 BrightcovePlayer.defaultProps = {};
