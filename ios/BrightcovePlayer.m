@@ -161,11 +161,13 @@
 }
 
 - (void)adsManagerDidRequestContentPause:(IMAAdsManager *)adsManager {
+    _adIsPlaying = YES;
     // The SDK is going to play ads, so pause the content.
     [_playbackController pause];
 }
 
 - (void)adsManagerDidRequestContentResume:(IMAAdsManager *)adsManager {
+    _adIsPlaying = NO;
     // The SDK is done playing ads (at least for now), so resume the content.
     [_playbackController play];
 }
@@ -265,9 +267,11 @@
             self.onPlay(@{});
         }
     } else if (lifecycleEvent.eventType == kBCOVPlaybackSessionLifecycleEventPause) {
-        _playing = false;
-        if (self.onPause) {
-            self.onPause(@{});
+        if (!_adIsPlaying) { // Don't do the pause callback if the ad is playing
+            _playing = false;
+            if (self.onPause) {
+                self.onPause(@{});
+            }
         }
     } else if (lifecycleEvent.eventType == kBCOVPlaybackSessionLifecycleEventEnd) {
         if (self.onEnd) {
