@@ -19,10 +19,17 @@
 }
 
 - (void)setup {
+    _playbackController = [BCOVPlayerSDKManager.sharedManager createPlaybackController];
+    _playbackController.delegate = self;
+    _playbackController.autoPlay = NO;
+    _playbackController.autoAdvance = NO;
+
     _playerView = [[BCOVPUIPlayerView alloc] initWithPlaybackController:nil options:nil controlsView:[BCOVPUIBasicControlView basicControlViewWithVODLayout] ];
     _playerView.delegate = self;
     _playerView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
     _playerView.backgroundColor = UIColor.blackColor;
+
+    _playerView.playbackController = self.playbackController;
 
     [self addSubview:_playerView];
 
@@ -35,15 +42,8 @@
             [self setupAdsLoader];
         }
 
-        _playbackController = [BCOVPlayerSDKManager.sharedManager createPlaybackController];
-        _playbackController.delegate = self;
-        _playbackController.autoPlay = NO;
-        _playbackController.autoAdvance = NO;
-
-        _playerView.playbackController = self.playbackController;
-
         _playbackService = [[BCOVPlaybackService alloc] initWithAccountId:_accountId policyKey:_policyKey];
-        
+
         [self resumeAdAfterForeground];
     }
 }
@@ -97,10 +97,10 @@
     // When the app goes to the background, the Google IMA library will pause
     // the ad. This code resumes the ad when enteringthe foreground.
     BrightcovePlayer * __weak weakSelf = self;
-    
+
     self.notificationReceipt = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
         BrightcovePlayer *strongSelf = weakSelf;
-        
+
         if (strongSelf.adIsPlaying && strongSelf.adsManager && !strongSelf.isAdBrowserOpen) {
             [strongSelf.adsManager resume];
         }
