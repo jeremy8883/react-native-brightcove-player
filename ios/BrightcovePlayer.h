@@ -45,6 +45,8 @@
 @property (nonatomic, copy) RCTDirectEventBlock onAdReturnFromBrowser;
 
 -(void) seekTo:(NSNumber *)time;
+-(void) play;
+-(void) pause;
 
 @property (nonatomic, assign) BOOL adIsPlaying;
 @property (nonatomic, strong) id<NSObject> notificationReceipt;

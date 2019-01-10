@@ -21,7 +21,7 @@
 - (void)setup {
     _playbackController = [BCOVPlayerSDKManager.sharedManager createPlaybackController];
     _playbackController.delegate = self;
-    _playbackController.autoPlay = NO;
+    _playbackController.autoPlay = YES;
     _playbackController.autoAdvance = NO;
 
     _playerView = [[BCOVPUIPlayerView alloc] initWithPlaybackController:nil options:nil controlsView:[BCOVPUIBasicControlView basicControlViewWithVODLayout] ];
@@ -216,17 +216,14 @@
     [self loadMovie];
 }
 
-- (void)setAutoPlay:(BOOL)autoPlay {
-    _playbackController.autoPlay = autoPlay;
+- (void)play {
+    if (_playing) return;
+    [_playbackController play];
 }
 
-- (void)setPlay:(BOOL)play {
-    if (_playing == play) return;
-    if (play) {
-        [_playbackController play];
-    } else {
-        [_playbackController pause];
-    }
+- (void)pause {
+    if (!_playing) return;
+    [_playbackController pause];
 }
 
 - (void)setFullscreen:(BOOL)fullscreen {

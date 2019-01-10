@@ -47,7 +47,6 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
     private String videoId;
     private String referenceId;
     private Catalog catalog;
-    private boolean autoPlay = true;
     private boolean playing = false;
     private boolean fullscreen = false;
 
@@ -429,10 +428,6 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
         this.loadMovie();
     }
 
-    public void setAutoPlay(boolean autoPlay) {
-        this.autoPlay = autoPlay;
-    }
-
     public void setPlay(boolean play) {
         if (this.playing == play) return;
         if (play) {
@@ -459,6 +454,14 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
         Map<String, Object> details = new HashMap<>();
         details.put(Event.VOLUME, volume);
         this.playerVideoView.getEventEmitter().emit(EventType.SET_VOLUME, details);
+    }
+
+    public void play() {
+        this.playerVideoView.start();
+    }
+
+    public void pause() {
+        this.playerVideoView.pause();
     }
 
     public void seekTo(int time) {
@@ -488,9 +491,7 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
                 if (!isAttachedToWindow()) return;
 
                 BrightcovePlayerView.this.playerVideoView.add(video);
-                if (BrightcovePlayerView.this.autoPlay) {
-                    BrightcovePlayerView.this.playerVideoView.start();
-                }
+                BrightcovePlayerView.this.playerVideoView.start();
             }
 
             @Override

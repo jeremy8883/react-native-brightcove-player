@@ -133,15 +133,41 @@ BrightcovePlayer.prototype.seekTo = Platform.select({
   }
 });
 
+BrightcovePlayer.prototype.play = Platform.select({
+  ios: function() {
+    NativeModules.BrightcovePlayerManager.play(
+      ReactNative.findNodeHandle(this)
+    );
+  },
+  android: function() {
+    UIManager.dispatchViewManagerCommand(
+      ReactNative.findNodeHandle(this._root),
+      UIManager.BrightcovePlayer.Commands.play
+    );
+  }
+});
+
+BrightcovePlayer.prototype.pause = Platform.select({
+  ios: function() {
+    NativeModules.BrightcovePlayerManager.pause(
+      ReactNative.findNodeHandle(this)
+    );
+  },
+  android: function() {
+    UIManager.dispatchViewManagerCommand(
+      ReactNative.findNodeHandle(this._root),
+      UIManager.BrightcovePlayer.Commands.pause
+    );
+  }
+});
+
 BrightcovePlayer.propTypes = {
   ...(ViewPropTypes || View.propTypes),
   policyKey: PropTypes.string,
   accountId: PropTypes.string,
   referenceId: PropTypes.string,
   videoId: PropTypes.string,
-  autoPlay: PropTypes.bool,
   adRulesUrl: PropTypes.string,
-  play: PropTypes.bool,
   fullscreen: PropTypes.bool,
   disableDefaultControl: PropTypes.bool,
   volume: PropTypes.number,
