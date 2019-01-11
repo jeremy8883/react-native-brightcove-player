@@ -12,6 +12,9 @@
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
+    _progressWhenUserPressedPlay = kCMTimeZero;
+    _currentProgress = kCMTimeZero;
+
     if (self = [super initWithFrame:frame]) {
         [self setup];
     }
@@ -53,10 +56,15 @@
     if (_videoId) {
         [_playbackService findVideoWithVideoID:_videoId parameters:nil completion:^(BCOVVideo *video, NSDictionary *jsonResponse, NSError *error) {
             if (video) {
+                // NSLog(@"Test: fetchVideoWithVideoID success");
+                self->_currentVideo = video;
                 if (![@"NONE" isEqualToString:self->_adRulesUrl]) {
                     [self requestAds];
+                    // Don't set the video yet, just play the add, then when it finishes (or fails),
+                    // the video will get set then
+                } else {
+                    [self.playbackController setVideos: @[video]];
                 }
-                [self.playbackController setVideos: @[video]];
             } else {
                 [self emitError:error];
             }
@@ -129,10 +137,10 @@
     // Something went wrong loading ads.
     NSString *errorCode = [NSString stringWithFormat:@"%ld", (long)adErrorData.adError.code];
     self.onAdError(@{
-        @"error_code": errorCode,
-        @"message": adErrorData.adError.message,
-    });
-    [_playbackController play];
+                     @"error_code": errorCode,
+                     @"message": adErrorData.adError.message,
+                     });
+    [self resetAndPlay: NO];
 }
 
 #pragma mark AdsManager Delegates
@@ -154,10 +162,10 @@
     // Something went wrong with the ads manager after ads were loaded.
     NSString *errorCode = [NSString stringWithFormat:@"%ld", (long)error.code];
     self.onAdError(@{
-      @"error_code": errorCode,
-      @"message": error.message,
-    });
-    [_playbackController play];
+                     @"error_code": errorCode,
+                     @"message": error.message,
+                     });
+    [self resetAndPlay: NO];
 }
 
 - (void)adsManagerDidRequestContentPause:(IMAAdsManager *)adsManager {
@@ -169,7 +177,7 @@
 - (void)adsManagerDidRequestContentResume:(IMAAdsManager *)adsManager {
     _adIsPlaying = NO;
     // The SDK is done playing ads (at least for now), so resume the content.
-    [_playbackController play];
+    [self resetAndPlay: NO];
 }
 
 #pragma mark getters / setters
@@ -218,7 +226,22 @@
 
 - (void)play {
     if (_playing) return;
-    [_playbackController play];
+    // NSLog(@"Test: [_playbackController play] from user");
+    [self resetAndPlay: YES];
+}
+
+- (void)resetAndPlay:(BOOL) fromLastPosition {
+    BOOL isCurrentProgressZero = CMTimeCompare(_currentProgress, kCMTimeZero) == 0;
+    if (fromLastPosition && !_isLive && !isCurrentProgressZero) {
+        // Now, after the kBCOVPlaybackSessionLifecycleEventPlay event below, we will
+        // automatically go back to the position that the user was at when they pressed
+        // play.
+        _progressWhenUserPressedPlay = _currentProgress;
+    } else {
+        _progressWhenUserPressedPlay = kCMTimeZero;
+    }
+
+    [_playbackController setVideos: @[_currentVideo]];
 }
 
 - (void)pause {
@@ -239,6 +262,10 @@
     [self refreshVolume];
 }
 
+- (void)setIsLive:(BOOL)isLive {
+    _isLive = isLive;
+}
+
 - (void)refreshVolume {
     if (!_playbackSession) return;
     _playbackSession.player.volume = _targetVolume;
@@ -249,17 +276,32 @@
 }
 
 - (void)seekTo:(NSNumber *)time {
-    [_playbackController seekToTime:CMTimeMakeWithSeconds([time floatValue], NSEC_PER_SEC) completionHandler:^(BOOL finished) {
+    CMTime cmTime = CMTimeMakeWithSeconds([time floatValue], NSEC_PER_SEC);
+    _currentProgress = cmTime;
+    [_playbackController seekToTime:cmTime completionHandler:^(BOOL finished) {
     }];
 }
 
 - (void)playbackController:(id<BCOVPlaybackController>)controller playbackSession:(id<BCOVPlaybackSession>)session didReceiveLifecycleEvent:(BCOVPlaybackSessionLifecycleEvent *)lifecycleEvent {
+    // NSLog(@"TEST: didReceiveLifecycleEvent %@", lifecycleEvent.eventType);
     if (lifecycleEvent.eventType == kBCOVPlaybackSessionLifecycleEventReady) {
         if (self.onReady) {
             self.onReady(@{});
         }
     } else if (lifecycleEvent.eventType == kBCOVPlaybackSessionLifecycleEventPlay) {
         _playing = true;
+
+        // Hack fix, when we paused the video, then played it again, it would immediately pause again.
+        // Since playback works fine when starting from auto play, we are just reseting the video, then
+        // calling a seekTo function to return the user to the last spot.
+        BOOL isProgressAtZero = CMTimeCompare(_progressWhenUserPressedPlay, kCMTimeZero) == 0;
+        if (!isProgressAtZero) {
+            // NSLog(@"TEST: kBCOVPlaybackSessionLifecycleEventPlay seek to");
+            [self->_playbackController
+             seekToTime:_progressWhenUserPressedPlay
+             completionHandler:^(BOOL finished) {}];
+        }
+
         if (self.onPlay) {
             self.onPlay(@{});
         }
@@ -287,6 +329,7 @@
 
 -(void)playbackController:(id<BCOVPlaybackController>)controller playbackSession:(id<BCOVPlaybackSession>)session didProgressTo:(NSTimeInterval)progress {
     if (self.onProgress && progress > 0 && progress != INFINITY) {
+        _currentProgress = CMTimeMakeWithSeconds(progress, 100000);
         self.onProgress(@{
                           @"currentTime": @(progress)
                           });

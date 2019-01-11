@@ -22,6 +22,7 @@ RCT_EXPORT_VIEW_PROPERTY(videoId, NSString);
 RCT_EXPORT_VIEW_PROPERTY(referenceId, NSString);
 RCT_EXPORT_VIEW_PROPERTY(adRulesUrl, NSString);
 RCT_EXPORT_VIEW_PROPERTY(fullscreen, BOOL);
+RCT_EXPORT_VIEW_PROPERTY(isLive, BOOL);
 RCT_EXPORT_VIEW_PROPERTY(disableDefaultControl, BOOL);
 RCT_EXPORT_VIEW_PROPERTY(volume, NSNumber);
 RCT_EXPORT_VIEW_PROPERTY(onReady, RCTDirectEventBlock);
@@ -49,7 +50,7 @@ RCT_EXPORT_METHOD(seekTo:(nonnull NSNumber *)reactTag seconds:(nonnull NSNumber 
     }];
 }
 
-RCT_EXPORT_METHOD(play:(nonnull NSNumber *)reactTag) { 
+RCT_EXPORT_METHOD(play:(nonnull NSNumber *)reactTag) {
     [self.bridge.uiManager addUIBlock:^(__unused RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {
         BrightcovePlayer *player = (BrightcovePlayer*)viewRegistry[reactTag];
         if ([player isKindOfClass:[BrightcovePlayer class]]) {

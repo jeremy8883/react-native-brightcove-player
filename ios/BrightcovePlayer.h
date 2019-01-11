@@ -22,6 +22,12 @@
 @property (nonatomic) BOOL playing;
 @property (nonatomic) float lastBufferProgress;
 @property (nonatomic) float targetVolume;
+@property (nonatomic) BOOL isLive;
+
+// Hacks to get around an issue where the player would play => pause automatically
+@property (nonatomic) BCOVVideo* currentVideo;
+@property (nonatomic) CMTime currentProgress;
+@property (nonatomic) CMTime progressWhenUserPressedPlay;
 
 @property (nonatomic, copy) NSString *referenceId;
 @property (nonatomic, copy) NSString *videoId;
