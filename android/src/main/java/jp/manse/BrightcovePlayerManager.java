@@ -16,6 +16,8 @@ import java.util.Map;
 public class BrightcovePlayerManager extends SimpleViewManager<BrightcovePlayerView> {
     public static final String REACT_CLASS = "BrightcovePlayer";
     public static final int COMMAND_SEEK_TO = 1;
+    public static final int COMMAND_PLAY = 2;
+    public static final int COMMAND_PAUSE = 3;
     public static final String EVENT_READY = "ready";
     public static final String EVENT_PLAY = "play";
     public static final String EVENT_PAUSE = "pause";
@@ -65,11 +67,6 @@ public class BrightcovePlayerManager extends SimpleViewManager<BrightcovePlayerV
         view.setReferenceId(referenceId);
     }
 
-    @ReactProp(name = "play")
-    public void setPlay(BrightcovePlayerView view, boolean play) {
-        view.setPlay(play);
-    }
-
     @ReactProp(name = "disableDefaultControl")
     public void setDefaultControlDisabled(BrightcovePlayerView view, boolean disableDefaultControl) {
         view.setDefaultControlDisabled(disableDefaultControl);
@@ -93,8 +90,9 @@ public class BrightcovePlayerManager extends SimpleViewManager<BrightcovePlayerV
     @Override
     public Map<String, Integer> getCommandsMap() {
         return MapBuilder.of(
-                "seekTo",
-                COMMAND_SEEK_TO
+                "seekTo", COMMAND_SEEK_TO,
+                "play", COMMAND_PLAY,
+                "pause", COMMAND_PAUSE
         );
     }
 
@@ -105,6 +103,14 @@ public class BrightcovePlayerManager extends SimpleViewManager<BrightcovePlayerV
         switch (commandType) {
             case COMMAND_SEEK_TO: {
                 view.seekTo((int)(args.getDouble(0) * 1000));
+                return;
+            }
+            case COMMAND_PLAY: {
+                view.play();
+                return;
+            }
+            case COMMAND_PAUSE: {
+                view.pause();
                 return;
             }
         }

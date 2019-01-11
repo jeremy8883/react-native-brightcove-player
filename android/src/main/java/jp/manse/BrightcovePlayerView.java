@@ -428,15 +428,6 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
         this.loadMovie();
     }
 
-    public void setPlay(boolean play) {
-        if (this.playing == play) return;
-        if (play) {
-            this.playerVideoView.start();
-        } else {
-            this.playerVideoView.pause();
-        }
-    }
-
     public void setDefaultControlDisabled(boolean disabled) {
         this.mediaController.hide();
         this.mediaController.setShowHideTimeout(disabled ? 1 : 4000);
@@ -457,10 +448,12 @@ public class BrightcovePlayerView extends RelativeLayout implements LifecycleObs
     }
 
     public void play() {
+        if (this.playing) return;
         this.playerVideoView.start();
     }
 
     public void pause() {
+        if (!this.playing) return;
         this.playerVideoView.pause();
     }
 
